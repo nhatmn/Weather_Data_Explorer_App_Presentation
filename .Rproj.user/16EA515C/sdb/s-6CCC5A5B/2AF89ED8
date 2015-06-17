@@ -1,0 +1,17 @@
+{
+    "contents" : "# Load neccessary library\nlibrary(data.table)\nlibrary(ggplot2)\nlibrary(rCharts)\nlibrary(ggvis)\nlibrary(reshape2)\nlibrary(dplyr)\nlibrary(mapproj)\nlibrary(maps)\nlibrary(ggthemes)\n\n# Read the Weather dataset after aggregating\nweatherData <- fread('data/StormData_to2015_after_aggregating.csv') %>% mutate(EVENT_TYPE = tolower(EVENT_TYPE))\nweatherData <- data.table(weatherData)\nweatherData$STATE_NAME <- tolower(weatherData$STATE_NAME)\n\n# Remove unsupported states\ndt <- weatherData[!weatherData$STATE_NAME %in% c(\"american samoa\", \"atlantic north\", \"atlantic south\", \"district of columbia\",\n                                     \"e pacific\", \"guam\", \"gulf of alaska\", \"gulf of mexico\", \"hawaii waters\", \"lake erie\", \"lake huron\", \n                                     \"lake michigan\", \"lake ontario\", \"lake st clair\", \"lake superior\", \"puerto rico\", \"st lawrence r\", \n                                     \"virgin islands\"),]\nevent_types <- sort(unique(dt$EVENT_TYPE))\n\naggregate_by_state <- function(dt, year_min, year_max, evtypes) {\n  replace_na <- function(x) ifelse(is.na(x), 0, x)\n  round_2 <- function(x) round(x, 2)\n  \n  states <- data.table(STATE_NAME=sort(unique(dt$STATE_NAME)))\n  \n  aggregated <- dt %>% filter(YEAR >= year_min, YEAR <= year_max, EVENT_TYPE %in% evtypes) %>%\n    group_by(STATE_NAME) %>%\n    summarise_each(funs(sum), COUNT:CROPS_DAMAGE)\n  \n  # We want all states to be present even if nothing happened\n  left_join(states,  aggregated, by = \"STATE_NAME\") %>%\n    mutate_each(funs(replace_na), FATALITIES:CROPS_DAMAGE) %>%\n    mutate_each(funs(round_2), PROPERTY_DAMAGE, CROPS_DAMAGE)    \n}\n\n# Get damage of weather events by states\ndata <- aggregate_by_state(weatherData, 1950, 2015, event_types)\ndata$Affected <- data$FATALITIES + data$INJURIES\n\n# Draw Map\nstates_map <- map_data(\"state\")\nfill <- \"Affected\"\nyear_min <- 1950\nyear_max <- 2015\ntitle <- \"Population Impact %d - %d (Number of Affected)\"\ntitle <- sprintf(title, year_min, year_max)\np <- ggplot(data, aes(map_id = STATE_NAME))\np <- p + geom_map(aes_string(fill = fill), map = states_map, colour='black')\np <- p + expand_limits(x = states_map$long, y = states_map$lat)\np <- p + coord_map() + theme_bw(base_size = 14)\np <- p + labs(x = \"Long\", y = \"Lat\", title = title)\np <- p + geom_point(x=5, y=5) + coord_fixed()\np + scale_fill_gradient(low = \"#d3e992\", high = \"#669900\")\n\n\n\n\n",
+    "created" : 1434539765956.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2995953786",
+    "id" : "2AF89ED8",
+    "lastKnownWriteTime" : 1434542156,
+    "path" : "D:/GitHub/WeatherAppReproduciblePitchPresentation/presentation.R",
+    "project_path" : "presentation.R",
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "source_on_save" : false,
+    "type" : "r_source"
+}
